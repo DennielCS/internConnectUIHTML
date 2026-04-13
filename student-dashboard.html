@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>InternConnect | Student Dashboard</title>
     <script>
-      tailwind = { config: { darkMode: "class" } };
+      tailwind.config = { darkMode: "class" };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="./assets/css/styles.css" />
@@ -25,7 +25,6 @@
         <header class="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
           <button id="sidebarToggle" class="rounded-lg border border-slate-300 px-3 py-1 text-sm md:hidden dark:border-slate-600">Menu</button>
           <h1 class="font-semibold">Student Dashboard</h1>
-          <button id="themeToggle" class="rounded-lg border border-slate-300 px-3 py-1 text-sm dark:border-slate-600">Theme</button>
         </header>
         <main class="space-y-5 p-4">
           <div class="grid gap-4 md:grid-cols-3">
@@ -45,20 +44,6 @@
     </div>
     <script>
       (function () {
-        const THEME_KEY = "internconnect-theme";
-        const root = document.documentElement;
-        const savedTheme = localStorage.getItem(THEME_KEY) || "light";
-        if (savedTheme === "dark") root.classList.add("dark");
-
-        const toggleBtn = document.getElementById("themeToggle");
-        if (toggleBtn) {
-          toggleBtn.addEventListener("click", () => {
-            const nextTheme = root.classList.contains("dark") ? "light" : "dark";
-            root.classList.toggle("dark");
-            localStorage.setItem(THEME_KEY, nextTheme);
-          });
-        }
-
         const sidebar = document.getElementById("sidebar");
         const sidebarToggle = document.getElementById("sidebarToggle");
         if (sidebar && sidebarToggle) {
