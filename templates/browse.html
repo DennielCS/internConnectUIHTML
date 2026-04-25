@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InternConnect - Browse Internships</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 font-sans">
+
+    <nav class="bg-blue-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 font-bold text-2xl tracking-wider">
+                    InternConnect
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="browse.html" class="text-white hover:text-blue-300 px-3 py-2 rounded-md font-medium transition">Browse</a>
+                    <a href="tracker.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md font-medium transition">My Applications</a>
+                    <a href="dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md font-medium transition">Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-gray-900">Find Your Internship</h1>
+            <p class="mt-2 text-lg text-gray-600">Discover opportunities that match your academic track and skills.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                <select id="categoryFilter" class="p-2 border border-gray-300 rounded-md shadow-sm w-full md:w-56 text-gray-700 bg-white">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="setupFilter" class="p-2 border border-gray-300 rounded-md shadow-sm w-full md:w-56 text-gray-700 bg-white">
+                    <option value="">All Work Setups</option>
+                </select>
+                <input id="locationInput" type="text" placeholder="Location..."
+                    class="p-2 border border-gray-300 rounded-md shadow-sm w-full md:w-40 text-gray-700" />
+            </div>
+            <div class="flex gap-4 w-full md:w-auto mt-4 md:mt-0">
+                <button onclick="applyFilters()" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition w-full md:w-auto font-semibold">
+                    Search
+                </button>
+                <button onclick="resetFilters()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300 transition w-full md:w-auto font-semibold">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div id="internship-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <p class="text-gray-500 text-xl font-medium animate-pulse col-span-3">Loading internships...</p>
+        </div>
+
+    </main>
+
+    <script>
+        const API = 'http://127.0.0.1:8000/api';
+        let allListings = [];
+
+        // Load category and work setup dropdowns from API
+        async function loadFilters() {
+            const [cats, setups] = await Promise.all([
+                fetch(`${API}/categories/`).then(r => r.json()),
+                fetch(`${API}/work-setups/`).then(r => r.json()),
+            ]);
+            cats.forEach(c => {
+                document.getElementById('categoryFilter').innerHTML +=
+                    `<option value="${c.id}">${c.name}</option>`;
+            });
+            setups.forEach(s => {
+                document.getElementById('setupFilter').innerHTML +=
+                    `<option value="${s.id}">${s.label}</option>`;
+            });
+        }
+
+        // Fetch listings from API
+        async function loadListings(params = '') {
+            const container = document.getElementById('internship-container');
+            container.innerHTML = '<p class="text-gray-500 text-xl animate-pulse col-span-3">Loading internships...</p>';
+            const res = await fetch(`${API}/internships/${params}`);
+            allListings = await res.json();
+            renderListings(allListings);
+        }
+
+        // Render listing cards
+        function renderListings(data) {
+            const container = document.getElementById('internship-container');
+            if (!data.length) {
+                container.innerHTML = '<p class="text-gray-400 col-span-3 text-center py-20">No internships found.</p>';
+                return;
+            }
+            container.innerHTML = data.map(l => `
+                <div class="bg-white rounded-xl shadow p-5 flex flex-col gap-3 border border-gray-100 hover:shadow-md transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
+                            ${l.company_name?.charAt(0) || 'C'}
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800 text-sm">${l.company_name}</p>
+                            <p class="text-xs text-gray-400">${l.location || ''}</p>
+                        </div>
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-base">${l.title}</h3>
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-full">${l.category_name}</span>
+                        <span class="bg-green-50 text-green-700 px-2 py-1 rounded-full">${l.work_setup_label}</span>
+                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full">⏱ ${l.duration}</span>
+                    </div>
+                    <p class="text-xs text-red-500">Deadline: ${l.deadline}</p>
+                    <a href="detail.html?id=${l.id}"
+                       class="mt-auto bg-blue-600 text-white text-center py-2 rounded-lg text-sm hover:bg-blue-700 transition font-medium">
+                        View Details
+                    </a>
+                </div>
+            `).join('');
+        }
+
+        function applyFilters() {
+            const q = new URLSearchParams();
+            const category = document.getElementById('categoryFilter').value;
+            const setup    = document.getElementById('setupFilter').value;
+            const location = document.getElementById('locationInput').value;
+            if (category) q.set('category',   category);
+            if (setup)    q.set('work_setup',  setup);
+            if (location) q.set('location',    location);
+            loadListings(q.toString() ? '?' + q.toString() : '');
+        }
+
+        function resetFilters() {
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('setupFilter').value    = '';
+            document.getElementById('locationInput').value  = '';
+            loadListings();
+        }
+
+        loadFilters();
+        loadListings();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InternConnect - Coordinator Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
+
+    <nav class="bg-blue-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="font-bold text-2xl tracking-wider">InternConnect</div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="browse.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md font-medium transition">Browse</a>
+                    <a href="tracker.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md font-medium transition">My Applications</a>
+                    <a href="dashboard.html" class="text-white hover:text-blue-300 px-3 py-2 rounded-md font-medium transition">Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-8">Coordinator Dashboard</h2>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10" id="statCards">
+            <p class="text-gray-400 col-span-4 animate-pulse">Loading summary...</p>
+        </div>
+
+        <!-- Applications Table -->
+        <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">All Applications</h3>
+                <select id="statusFilterDash" class="border rounded-lg px-3 py-2 text-sm" onchange="filterByStatus()">
+                    <option value="">All Statuses</option>
+                </select>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+                        <tr>
+                            <th class="px-4 py-3">Student</th>
+                            <th class="px-4 py-3">Internship</th>
+                            <th class="px-4 py-3">Company</th>
+                            <th class="px-4 py-3">Applied</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API = 'http://127.0.0.1:8000/api';
+        let allApps = [], allStatuses = [];
+
+        async function loadDashboard() {
+            const [summary, apps, statuses] = await Promise.all([
+                fetch(`${API}/dashboard/summary/`).then(r => r.json()),
+                fetch(`${API}/applications/track/`).then(r => r.json()),
+                fetch(`${API}/application-statuses/`).then(r => r.json()),
+            ]);
+            allApps     = apps;
+            allStatuses = statuses;
+            renderStats(summary);
+            renderStatuses(statuses);
+            renderApps(apps);
+        }
+
+        function renderStats(s) {
+            document.getElementById('statCards').innerHTML = [
+                ['Active Listings',     s.total_listings,        'text-blue-700',   'bg-blue-50'],
+                ['Verified Companies',  s.total_companies,       'text-green-700',  'bg-green-50'],
+                ['Total Applications',  s.total_applications,    'text-purple-700', 'bg-purple-50'],
+                ['Pending Review',      s.pending_applications,  'text-yellow-700', 'bg-yellow-50'],
+            ].map(([label, val, textCls, bgCls]) => `
+                <div class="${bgCls} rounded-xl shadow p-5 border border-gray-100">
+                    <p class="text-xs text-gray-500 mb-1">${label}</p>
+                    <p class="text-3xl font-bold ${textCls}">${val}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderStatuses(statuses) {
+            const sel = document.getElementById('statusFilterDash');
+            statuses.forEach(s => {
+                sel.innerHTML += `<option value="${s.id}">${s.label}</option>`;
+            });
+        }
+
+        function renderApps(apps) {
+            const tbody = document.getElementById('appsTableBody');
+            if (!apps.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-gray-400 text-center">No applications yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = apps.map(a => `
+                <tr class="border-b hover:bg-gray-50 transition">
+                    <td class="px-4 py-3">
+                        <p class="font-medium">${a.student_name}</p>
+                        <p class="text-xs text-gray-400">${a.student_number}</p>
+                    </td>
+                    <td class="px-4 py-3">${a.listing_title}</td>
+                    <td class="px-4 py-3 text-gray-500">${a.company_name}</td>
+                    <td class="px-4 py-3 text-xs text-gray-400">${new Date(a.applied_at).toLocaleDateString()}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                            ${a.status_label}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <select onchange="updateStatus(${a.id}, this.value)"
+                                class="text-xs border rounded px-2 py-1">
+                            <option value="">Change status</option>
+                            ${allStatuses.map(s => `<option value="${s.id}">${s.label}</option>`).join('')}
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function updateStatus(appId, statusId) {
+            if (!statusId) return;
+            const res = await fetch(`${API}/applications/${appId}/status/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: statusId }),
+            });
+            if (res.ok) loadDashboard();
+            else alert('Failed to update status.');
+        }
+
+        function filterByStatus() {
+            const val      = document.getElementById('statusFilterDash').value;
+            const filtered = val ? allApps.filter(a => a.status == val) : allApps;
+            renderApps(filtered);
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
